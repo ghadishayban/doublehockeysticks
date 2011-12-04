@@ -291,7 +291,8 @@
   "Parses the HL7 message.
   Parameter r must implement the Reader protocol." [r] 
   (let [delim (read-delimiters r)
-        msh-fields (read-segment-fields r delim)]
+        msh-fields (vec (concat [nil delim]
+                                (read-segment-fields r delim)))]
       (loop [acc [(Segment. "MSH" msh-fields )]
                   ch (read r)]
         (cond 
