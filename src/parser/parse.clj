@@ -1,6 +1,7 @@
 (ns parser.parse
   (:refer-clojure :exclude [read])
-  (:import (java.io PushbackReader StringReader)))
+  (:import (java.io PushbackReader 
+                    StringReader)))
 
 ;;(set! *warn-on-reflection* true)
 
@@ -20,17 +21,22 @@
 (def SEGMENT-DELIMITER ASCII_CR)
 
 (defprotocol Stream
+  "A simple abstraction for reading chars"
   (read [x])
   (unread [x]))
 
 (deftype Reader 
-  ^{:doc "This type is PushbackReader, except you don't have to tell it
+  ^{:doc "This type wraps PushbackReader, except you don't have to tell it
   what to push back.  Also, it returns chars, not ints.
   rdr is the underlying Reader, buf is a primitive char array,
   pushCnt tracks how many chars have been pushed back into the
   stream, bufSize is the size of the primitive array, and pos
   is the position within buf that should be read."}
-  [^PushbackReader rdr ^chars buf pushCnt bufSize pos]
+  [^PushbackReader rdr 
+   ^chars buf
+   pushCnt 
+   bufSize 
+   pos]
   Stream
   (read [_]
         (if (> @pushCnt 0)

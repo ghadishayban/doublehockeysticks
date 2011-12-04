@@ -1,13 +1,19 @@
 # parser
 
-FIXME: write description
+Clojure HL7 Parser
+
+Based off work by Christopher Miles.
+
+The intention is to eventually cover the wire protocol (LLP/HLLP)
+and have a nice api for transformation.
+
+Oh, and clojurescript support.
 
 ## Usage
 
-FIXME: write
 
 ## License
 
-Copyright (C) 2011 FIXME
+Copyright (C) 2011 Ghadi Shayban, based off work by Christopher Miles
 
 Distributed under the Eclipse Public License, the same as Clojure.
