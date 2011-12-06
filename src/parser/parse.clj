@@ -62,8 +62,8 @@
 (defn parser 
   "Constructs a Reader from a String. 
   This method is for Java." 
-  [s]
-  (Reader. (PushbackReader. (StringReader. s))
+  [rd]
+  (Reader. rd
            (char-array defaultBufSize)
            (atom 0)
            defaultBufSize
@@ -202,10 +202,12 @@
                                             ;; and additional structure
              (read r))
 
-      (= ch component)
+      (= ch component) 
       (Component. acc)
 
-      (or (= ch field) (= ch SEGMENT-DELIMITER))
+      (or (= ch field) 
+          (= ch repeating)
+          (= ch SEGMENT-DELIMITER))
       (do (unread r) (Component. acc))
       
       :else
@@ -302,6 +304,12 @@
 
           ;; FIXME: Also terminate reading upon encountering End Block character(s)
           (= ch SEGMENT-DELIMITER)
-          (recur (conj acc (read-segment r delim)) (read r))))))
+          (let [peek (read r)]  ;; peek to see if end of message
+            (if (or (= peek ASCII_LF)
+                    (= peek SEGMENT-DELIMITER)  ;; is this line necessary?
+                    (nil? peek))
+              (Message. delim acc)
+              (do (unread r) ;; unread peeked chars
+               (recur (conj acc (read-segment r delim)) (read r)))))))))
 
 (comment (def r (test-msg)))
