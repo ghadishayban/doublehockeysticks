@@ -1,21 +1,14 @@
 (ns parser.parse
-  (:refer-clojure :exclude [read])
-  (:import (java.io PushbackReader 
-                    StringReader)))
+  (:refer-clojure :exclude [read]))
 
-;;(set! *warn-on-reflection* true)
-
-;; TODO: Test ClojureScript version.
-;; Does that need a special exception handler?
-;; Need to write a StringReader for that.
-
-(def defaultBufSize 3)
+;; ClojureScript version.
+;; Do we need a special exception handler?
 
 ;; ASCII codes of character delimiters
-(def ASCII_VT (char 11))
-(def ASCII_FS (char 28))
+(def ASCII_VT \u000B)
+(def ASCII_FS \u001C)
 (def ASCII_CR \return)
-(def ASCII_LF (char 10))
+(def ASCII_LF \u000A)
 
 ;; HL7 Messaging v2.x segment delimiter
 (def SEGMENT-DELIMITER ASCII_CR)
@@ -25,52 +18,27 @@
   (read [x])
   (unread [x]))
 
-(deftype Reader 
-  ^{:doc "This type wraps PushbackReader, except you don't have to tell it
-  what to push back.  Also, it returns chars, not ints.
-  rdr is the underlying Reader, buf is a primitive char array,
-  pushCnt tracks how many chars have been pushed back into the
-  stream, bufSize is the size of the primitive array, and pos
-  is the position within buf that should be read."}
-  [^PushbackReader rdr 
-   ^chars buf
-   pushCnt 
-   bufSize 
-   pos]
+(deftype StringIndexingReader [s next-pos len]
   Stream
   (read [_]
-        (if (> @pushCnt 0)
-          ;; pos can be greater than bufSize, so mod it.
-          (let [ch (aget buf (mod (- @pos @pushCnt) bufSize))]
-            (do (swap! pushCnt dec)
-              ch))
-          (do
-            (let [int-ch (.read rdr)]
-              (if (= int-ch -1)
-                nil
-                (do 
-                  (let [ch (char int-ch)]
-                    (aset buf (mod @pos bufSize) ch)
-                    (swap! pos inc)
-                    ch)))))))
+        (if (>= @next-pos len)
+          nil
+          (let [ch (.charAt s @next-pos)]
+            (swap! next-pos inc)
+            ch)))
   (unread [_]
-         (if (and (< @pushCnt bufSize) (< @pushCnt @pos))
-           (swap! pushCnt inc)
-           (throw (Exception. "Too much unreading!")))
-         nil))
+          (if (> @next-pos 0)
+            (swap! next-pos dec)
+            (throw "Can't unread further"))))
 
-(defn parser 
-  "Constructs a Reader from a String. 
-  This method is for Java." 
-  [rd]
-  (Reader. rd
-           (char-array defaultBufSize)
-           (atom 0)
-           defaultBufSize
-           (atom 0)))
+ 
+(defn get-string-reader [s]
+  (StringIndexingReader. s 
+                         (atom 0) 
+                         (.length s)))
 
 (defn test-msg []
-  (parser 
+  (get-string-reader
     (str "MSH|^~\\&|AcmeHIS|StJohn|CATH|StJohn|20061019172719||ORM^O01|"
          "|P|2.3" ASCII_CR
          "PID|||20301||Durden^Tyler^~^^Mr.||19700312|M|||88 Punchward Dr.^^Los Angeles^CA^11221^USA|||||||" ASCII_CR
@@ -91,10 +59,10 @@
          acc []]
       (cond 
         (nil? ch)
-        (throw (Exception. "EOF in delimiters"))
+        (throw "EOF in delimiters")
 
         (= ch SEGMENT-DELIMITER)
-        (throw (Exception. "Segment ended in delimiters"))
+        (throw "Segment ended in delimiters")
 
         (= 3 pos)
         (if (= "MSH" (apply str acc))
@@ -102,7 +70,7 @@
                   (assoc delim :field ch)
                   (inc pos)
                   nil)
-          (throw (Exception. "Header isn't MSH")))
+          (throw "Header isn't MSH"))
 
         (= 4 pos)
         (recur (read r)
@@ -131,7 +99,7 @@
         (= 8 pos)
           (if (= ch (:field delim))
             (do (unread r) (map->Delimiters delim))
-            (throw (Exception. "No field delim terminating delimiters.")))
+            (throw "No field delim terminating delimiters."))
         
         :else
         (recur (read r)
@@ -150,7 +118,7 @@
   (loop [acc [] ch (read r)]
     (cond
       (nil? ch)
-      (throw (Exception. "EOF during escape sequence."))
+      (throw "EOF during escape sequence.")
 
       (= escape ch)
       ;; TODO: Add escape sequence translation here,
@@ -277,7 +245,7 @@
              subcomponent] :as delim}]
   (let [seg-ID (read-text r delim)]  ;; FIXME: read-text can parse escapes
     (if (or (nil? seg-ID) (not= 3 (count seg-ID)))
-      (throw (Exception. "Bad segment header"))
+      (throw "Bad segment header")
       seg-ID)))
 
 (defn read-segment 
