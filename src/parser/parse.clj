@@ -36,8 +36,8 @@
     :private true}
   [^java.io.Reader rdr
    ^chars buf
-   pushCnt 
-   bufSize 
+   pushCnt
+   bufSize
    pos]
   Stream
   (read [_]
@@ -83,10 +83,10 @@
 
 (defn read-delimiters [r]
   (loop [ch (read r)
-         delim {} 
+         delim {}
          pos 0
          acc []]
-      (cond 
+      (cond
         (nil? ch)
         (throw (Exception. "EOF in delimiters"))
 
@@ -129,13 +129,12 @@
           (if (= ch (:field delim))
             (do (unread r) (map->Delimiters delim))
             (throw (Exception. "No field delim terminating delimiters.")))
-        
+
         :else
         (recur (read r)
                delim
                (inc pos)
                (conj acc ch)))))
-
 
 (defrecord Message [delimiters segments])
 (defrecord Segment [id fields])
@@ -157,10 +156,10 @@
       :else
       (recur (conj acc ch) (read r)))))
 
-(defn read-text [r {:keys [escape 
-                           field 
-                           component 
-                           repeating 
+(defn read-text [r {:keys [escape
+                           field
+                           component
+                           repeating
                            subcomponent] :as delim}]
   (loop [acc [] ch (read r)]
     (cond
@@ -177,17 +176,17 @@
           (= ch subcomponent)
           (= ch SEGMENT-DELIMITER))
       (do (unread r) (apply str acc))
-      
-      :else 
+
+      :else
       (recur (conj acc ch) (read r)))))
 
-(defn read-component [r 
-                      {:keys [escape 
-                              field 
-                              component 
-                              repeating 
+(defn read-component [r
+                      {:keys [escape
+                              field
+                              component
+                              repeating
                               subcomponent] :as delim}]
-  (loop [acc [] 
+  (loop [acc []
          ch (read r)]
     (cond
       (nil? ch)
@@ -199,23 +198,23 @@
                                             ;; and additional structure
              (read r))
 
-      (= ch component) 
+      (= ch component)
       (Component. acc)
 
-      (or (= ch field) 
+      (or (= ch field)
           (= ch repeating)
           (= ch SEGMENT-DELIMITER))
       (do (unread r) (Component. acc))
-      
+
       :else
       (do (unread r)
-        (recur (conj acc (read-text r delim)) 
+        (recur (conj acc (read-text r delim))
                (read r))))))
 
-(defn read-field [r {:keys [escape 
+(defn read-field [r {:keys [escape
                             field
-                            component 
-                            repeating 
+                            component
+                            repeating
                             subcomponent] :as delim}]
   ;; field-acc helps to handle repeating fields.
   ;; acc is for the components within a single field.
@@ -229,7 +228,7 @@
         (Field. acc))
 
       (or (= ch field) (= ch SEGMENT-DELIMITER))
-      (do (unread r) 
+      (do (unread r)
         (if (seq field-acc)
           (RepeatingField. (conj field-acc (Field. acc)))
           (Field. acc)))
@@ -237,29 +236,29 @@
       ;; When the field repeats, Empty out acc into a new field,
       ;; and place it in field-acc.
       (= ch repeating)
-      (recur [] 
-             (read r) 
+      (recur []
+             (read r)
              (conj field-acc (Field. acc)))
-      
+
       :else
       (do (unread r)
-        (recur (conj acc (read-component r delim)) 
-               (read r) 
+        (recur (conj acc (read-component r delim))
+               (read r)
                field-acc)))))
 
 (defn read-segment-fields [r {:keys [escape
-                                     field 
-                                     component 
-                                     repeating 
+                                     field
+                                     component
+                                     repeating
                                      subcomponent] :as delim}]
   (loop [acc [] ch (read r)]
     (cond
       (nil? ch)
-      acc 
+      acc
 
       (= ch SEGMENT-DELIMITER)
       (do (unread r) acc)
-      
+
       (= ch field)
         (recur (conj acc (read-field r delim)) (read r)))))
 
@@ -267,34 +266,34 @@
   "This returns the three character label on the Segment.
   It calls read-text, so it can potentially handle escape
   sequences.  Not a good idea."
-  [r {:keys [escape 
-             field 
-             component 
-             repeating 
+  [r {:keys [escape
+             field
+             component
+             repeating
              subcomponent] :as delim}]
   (let [seg-ID (read-text r delim)]  ;; FIXME: read-text can parse escapes
     (if (or (nil? seg-ID) (not= 3 (count seg-ID)))
       (throw (Exception. "Bad segment header"))
       seg-ID)))
 
-(defn read-segment 
-  [r {:keys [escape 
-             field 
-             component 
-             repeating 
+(defn read-segment
+  [r {:keys [escape
+             field
+             component
+             repeating
              subcomponent] :as delim}]
   (Segment. (read-segment-header r delim)
             (read-segment-fields r delim)))
 
 (defn read-message
   "Parses the HL7 message.
-  Parameter r must implement the Reader protocol." [r] 
+  Parameter r must implement the Reader protocol." [r]
   (let [delim (read-delimiters r)
         msh-fields (vec (concat [nil delim]
                                 (read-segment-fields r delim)))]
       (loop [acc [(Segment. "MSH" msh-fields )]
                   ch (read r)]
-        (cond 
+        (cond
           (nil? ch)
           (Message. delim
                     acc)
