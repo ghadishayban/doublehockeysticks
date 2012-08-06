@@ -1,7 +1,6 @@
 (ns parser.parse
   (:refer-clojure :exclude [read])
-  (:import (java.io PushbackReader 
-                    StringReader)))
+  (:import (java.io Reader StringReader)))
 
 ;;(set! *warn-on-reflection* true)
 
@@ -22,61 +21,59 @@
 
 (defprotocol Stream
   "A simple abstraction for reading chars"
-  (read [x])
-  (unread [x]))
+  (read [_]))
 
-(deftype Reader 
-  ^{:doc "This type wraps PushbackReader, except you don't have to tell it
-  what to push back.  Also, it returns chars, not ints.
-  rdr is the underlying Reader, buf is a primitive char array,
-  pushCnt tracks how many chars have been pushed back into the
-  stream, bufSize is the size of the primitive array, and pos
-  is the position within buf that should be read."}
-  [^PushbackReader rdr 
+(defprotocol Hold
+  (unread [_]))
+
+(deftype PushbackReader
+  ^{:doc "Similar to java.io.PushbackReader, except that you don't have to
+         specify what to push back.  Also, it returns chars, not ints.
+         rdr is the underlying Reader, buf is a primitive char array,
+         pushCnt tracks how many chars have been pushed back into the
+         stream, bufSize is the size of the primitive array, and pos
+         is the position within buf that should be read."
+    :private true}
+  [^java.io.Reader rdr
    ^chars buf
    pushCnt 
    bufSize 
    pos]
   Stream
   (read [_]
-        (if (> @pushCnt 0)
+        (cond
+          (> @pushCnt 0)
           ;; pos can be greater than bufSize, so mod it.
           (let [ch (aget buf (mod (- @pos @pushCnt) bufSize))]
-            (do (swap! pushCnt dec)
-              ch))
-          (do
-            (let [int-ch (.read rdr)]
-              (if (= int-ch -1)
-                nil
-                (do 
-                  (let [ch (char int-ch)]
-                    (aset buf (mod @pos bufSize) ch)
-                    (swap! pos inc)
-                    ch)))))))
+            (swap! pushCnt dec)
+            ch)
+          (= @pushCnt 0)
+          (let [int-ch (.read rdr)]
+            (if (= int-ch -1)
+              nil
+              (do
+                (let [ch (char int-ch)]
+                  (aset buf (mod @pos bufSize) ch)
+                  (swap! pos inc)
+                  ch))))
+          :else
+          (throw (Exception. "Too much unreading!"))))
+  Hold
   (unread [_]
-         (if (and (< @pushCnt bufSize) (< @pushCnt @pos))
+         (if (and (< @pushCnt bufSize)
+                  (< @pushCnt @pos)) ; we're not at the beginning
            (swap! pushCnt inc)
            (throw (Exception. "Too much unreading!")))
          nil))
 
-(defn parser 
-  "Constructs a Reader from a String. 
-  This method is for Java." 
+(defn pushback-reader
+  "Constructs a pushbackreader from a java.io.Reader"
   [rd]
-  (Reader. rd
+  (PushbackReader. rd
            (char-array defaultBufSize)
            (atom 0)
            defaultBufSize
            (atom 0)))
-
-(defn test-msg []
-  (parser 
-    (str "MSH|^~\\&|AcmeHIS|StJohn|CATH|StJohn|20061019172719||ORM^O01|"
-         "|P|2.3" ASCII_CR
-         "PID|||20301||Durden^Tyler^~^^Mr.||19700312|M|||88 Punchward Dr.^^Los Angeles^CA^11221^USA|||||||" ASCII_CR
-         "PV1||O|OP^^||||4652^Paulson^Robert|||OP|||20061019172717|20061019172718"  ASCII_CR
-         "ORC|NW|20061019172719" ASCII_CR
-         "OBR|1|200610&19172719||76770^Ultrasound: retroperitoneal^C4|||12349876")))
 
 (defrecord Delimiters [field
                        component
@@ -311,5 +308,3 @@
               (Message. delim acc)
               (do (unread r) ;; unread peeked chars
                (recur (conj acc (read-segment r delim)) (read r)))))))))
-
-(comment (def r (test-msg)))
