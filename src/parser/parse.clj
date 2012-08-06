@@ -106,7 +106,7 @@
                 (assoc delim :component ch)
                 (inc pos)
                 nil)
-          
+
         (= 5 pos)
         (recur (read r)
                 (assoc delim :repeating ch)
