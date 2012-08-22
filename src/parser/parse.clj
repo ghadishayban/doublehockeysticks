@@ -88,10 +88,10 @@
          acc []]
       (cond
         (nil? ch)
-        (throw (Exception. "EOF in delimiters"))
+        nil ;; instead of throwing up
 
         (= ch SEGMENT-DELIMITER)
-        (throw (Exception. "Segment ended in delimiters"))
+        (throw (Exception. "MSH segment ended early with a segment delimiter"))
 
         (= 3 pos)
         (if (= "MSH" (apply str acc))
@@ -99,7 +99,7 @@
                   (assoc delim :field ch)
                   (inc pos)
                   nil)
-          (throw (Exception. "Header isn't MSH")))
+          (throw (Exception. "Header doesn't begin with MSH")))
 
         (= 4 pos)
         (recur (read r)
@@ -128,7 +128,7 @@
         (= 8 pos)
           (if (= ch (:field delim))
             (do (unread r) (map->Delimiters delim))
-            (throw (Exception. "No field delim terminating delimiters.")))
+            (throw (Exception. "No field delim immediately after delimiters.")))
 
         :else
         (recur (read r)
@@ -288,8 +288,8 @@
 (defn read-message
   "Parses the HL7 message.
   Parameter r must implement the Reader protocol." [r]
-  (let [delim (read-delimiters r)
-        msh-fields (vec (concat [nil delim]
+  (if-let [delim (read-delimiters r)]    ;; bail out if the delimiters are null
+    (let [msh-fields (vec (concat [nil delim]
                                 (read-segment-fields r delim)))]
       (loop [acc [(Segment. "MSH" msh-fields )]
                   ch (read r)]
@@ -306,4 +306,4 @@
                     (nil? peek))
               (Message. delim acc)
               (do (unread r) ;; unread peeked chars
-               (recur (conj acc (read-segment r delim)) (read r)))))))))
+               (recur (conj acc (read-segment r delim)) (read r))))))))))
