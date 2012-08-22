@@ -26,6 +26,8 @@
 (defprotocol Hold
   (unread [_]))
 
+;; Does the following reek of being imperative? Yah.
+;; Should I extend-type Reader with mark/reset? What about CLJS?
 (deftype PushbackReader
   ^{:doc "Similar to java.io.PushbackReader, except that you don't have to
          specify what to push back.  Also, it returns chars, not ints.
