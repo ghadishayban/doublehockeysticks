@@ -53,18 +53,19 @@
   ([segment id repetition]
     (nth (repeating-field segment id) repetition)))
 
-;;[[comp] [[sub]onents]]
 (defn value
   [field]
   (loop [val field nest-level 2]
-    (println val nest-level)
     (cond
       (string? val)
       val
-      (and (sequential? val) (= 1 (count val)))
-      (if (pos? nest-level)
-        (recur (first val) (dec nest-level))
-        (throw (Exception. "Strangely nested field")))
       (sequential? val)
-      (throw (Exception. "Not a simple field")))))
+      (if (= 1 (count val))
+        (if (pos? nest-level)
+          (recur (first val) (dec nest-level))
+          (throw (Exception. "Strangely nested field")))
+        (throw (Exception. "Not a simple field")))
+      :else
+      (throw (Exception. "Unknown field structure")))))
+  
 
