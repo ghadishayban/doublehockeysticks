@@ -1,6 +1,11 @@
 (ns parser.test.core
-  (:use [parser.core])
+  (:require [parser.api :as api])
   (:use [clojure.test]))
 
-(deftest replace-me ;; FIXME: write
-  (is false "No tests have been written."))
+(deftest valuetest
+  (is (= "123" (api/value "123")))
+  (is (= "123" (api/value [["123"]])))
+  (is (thrown? Exception (api/value [[["123"]]])))
+  (is (thrown? Exception (api/value [[[["123"]]]])))
+  (is (thrown? Exception (api/value ["123" []])) "This has a second component, though it's empty."))
+
