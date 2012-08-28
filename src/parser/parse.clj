@@ -140,8 +140,6 @@
 
 (defrecord Message [delimiters segments])
 (defrecord Segment [id fields])
-(defrecord Field [components])
-(defrecord Component [subcomponents])
 (defrecord RepeatingField [fields])
 
 (defn read-escaped [r {:keys [escape] :as delim}]
@@ -192,21 +190,21 @@
          ch (read r)]
     (cond
       (nil? ch)
-      (Component. acc)
+      acc
 
       (= ch subcomponent)
       (recur (conj acc (read-text r delim)) ;; just add the subcomponent
                                             ;; to the vector, no need for
-                                            ;; and additional structure
+                                            ;; any additional structure
              (read r))
 
       (= ch component)
-      (Component. acc)
+      acc
 
       (or (= ch field)
           (= ch repeating)
           (= ch SEGMENT-DELIMITER))
-      (do (unread r) (Component. acc))
+      (do (unread r) acc)
 
       :else
       (do (unread r)
@@ -226,21 +224,21 @@
       ;; if the field-acc isn't empty, make a repeating field
       (nil? ch)
       (if (seq field-acc)
-        (RepeatingField. (conj field-acc (Field. acc)))
-        (Field. acc))
+        (RepeatingField. (conj field-acc acc))
+        acc)
 
       (or (= ch field) (= ch SEGMENT-DELIMITER))
       (do (unread r)
         (if (seq field-acc)
-          (RepeatingField. (conj field-acc (Field. acc)))
-          (Field. acc)))
+          (RepeatingField. (conj field-acc acc))
+          acc))
 
       ;; When the field repeats, Empty out acc into a new field,
       ;; and place it in field-acc.
       (= ch repeating)
       (recur []
              (read r)
-             (conj field-acc (Field. acc)))
+             (conj field-acc acc))
 
       :else
       (do (unread r)
