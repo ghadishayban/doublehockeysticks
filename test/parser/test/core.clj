@@ -1,5 +1,6 @@
 (ns parser.test.core
-  (:require [parser.api :as api])
+  (:require [parser.api :as api]
+            [parser.escape :as esc])
   (:use [clojure.test]))
 
 (deftest values
@@ -20,3 +21,6 @@
   (is (= "123" (api/component [nil "123"] 1)))
   (is (nil? (api/component [nil "123" nil] 2)))
   (is (= [] (api/component [nil "123" []] 2))))
+
+(deftest escape-seq
+  (is (= "\\" (esc/translate [\E] {:escape \\}))))

@@ -1,5 +1,6 @@
 (ns parser.parse
   (:refer-clojure :exclude [read])
+  (:require [parser.escape :refer (translate)])
   (:import (java.io Reader StringReader)))
 
 ;;(set! *warn-on-reflection* true)
@@ -149,9 +150,7 @@
       (throw (Exception. "EOF during escape sequence."))
 
       (= escape ch)
-      ;; TODO: Add escape sequence translation here,
-      ;; pass delimiters to translation helper.
-      (apply str acc)
+      (translate acc delim)
 
       :else
       (recur (conj acc ch) (read r)))))
