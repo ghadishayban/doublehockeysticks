@@ -12,9 +12,10 @@
 
 ;;get segment DONE
 ;;get segments DONE
-;;get field from segment
-;;get specific repeating field
-;;comp/subcomp
+;;get field from segment DONE
+;;get specific repeating field DONE
+;;comp/subcomp DONE
+;;have an api that doesn't throw array out of bounds
 
 (defn segment-name-pred
   [name]
@@ -57,7 +58,8 @@
   [field]
   (loop [val field nest-level 2]
     (cond
-      (string? val)
+      (or (string? val)
+          (nil? val))
       val
       (sequential? val)
       (if (= 1 (count val))
@@ -67,5 +69,15 @@
         (throw (Exception. "Not a simple field")))
       :else
       (throw (Exception. "Unknown field structure")))))
-  
 
+(defn component
+  ([field comp]
+    (cond
+      (vector? field)
+      (nth field comp)
+      (= 0 comp)
+      field)) 
+  ([field comp sub]
+    (component (component field comp) ;; Ugly?
+               sub)))
+  
