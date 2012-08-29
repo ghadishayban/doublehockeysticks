@@ -1,4 +1,6 @@
-(ns parser.parse
+(ns 
+  ^{:doc "An HL7 v2 parser.  read-message and string-reader are externally useful fns"}
+  parser.parse
   (:refer-clojure :exclude [read])
   (:require [parser.escape :refer (translate)]))
 
@@ -17,6 +19,7 @@
   (read [_]))
 
 (defprotocol Hold
+  "Simple protocol for pushing back a char"
   (unread [_]))
 
 ;; Should I extend-type Reader with mark/reset? What about CLJS?
@@ -254,8 +257,8 @@
             (read-segment-fields r delim)))
 
 (defn read-message
-  "Parses the HL7 message.
-  Parameter r must implement the Reader protocol." [r]
+  "Parses the HL7 message, returning a nested set of maps
+  Parameter r must implement the Stream/Hold protocols." [r]
   (if-let [delim (read-delimiters r)]    ;; bail out if the delimiters are null
     (let [msh-fields (vec (concat [nil delim]
                                 (read-segment-fields r delim)))]

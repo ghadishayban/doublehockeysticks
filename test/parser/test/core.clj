@@ -3,15 +3,6 @@
             [parser.escape :as esc])
   (:use [clojure.test]))
 
-(deftest values
-  (is (= "123" (api/value "123")))
-  (is (= nil (api/value nil)))
-  (is (= nil (api/value [nil])))
-  (is (= "123" (api/value [["123"]])))
-  (is (thrown? Exception (api/value [[["123"]]])))
-  (is (thrown? Exception (api/value [[[["123"]]]])))
-  (is (thrown? Exception (api/value ["123" []])) "This has a second component, though it's empty."))
-
 (deftest components
   (is (nil? (api/component nil 0)))
   (is (= "asdf" (api/component "asdf" 0)))
