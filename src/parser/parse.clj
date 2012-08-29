@@ -1,7 +1,6 @@
 (ns parser.parse
   (:refer-clojure :exclude [read])
-  (:require [parser.escape :refer (translate)])
-  (:import (java.io Reader StringReader)))
+  (:require [parser.escape :refer (translate)]))
 
 ;;(set! *warn-on-reflection* true)
 
@@ -9,16 +8,9 @@
 ;; Does that need a special exception handler?
 ;; Need to write a StringReader for that.
 
-(def defaultBufSize 3)
-
-;; ASCII codes of character delimiters
-(def ASCII_VT (char 11))
-(def ASCII_FS (char 28))
-(def ASCII_CR \return)
-(def ASCII_LF (char 10))
-
-;; HL7 Messaging v2.x segment delimiter
-(def SEGMENT-DELIMITER ASCII_CR)
+;; ASCII codes of delimiters
+(def ^:const SEGMENT-DELIMITER \return)
+(def ^:const LINE-FEED (char 10))
 
 (defprotocol Stream
   "A simple abstraction for reading chars"
@@ -27,56 +19,25 @@
 (defprotocol Hold
   (unread [_]))
 
-;; Does the following reek of being imperative? Yah.
 ;; Should I extend-type Reader with mark/reset? What about CLJS?
-(deftype PushbackReader
-  ^{:doc "Similar to java.io.PushbackReader, except that you don't have to
-         specify what to push back.  Also, it returns chars, not ints.
-         rdr is the underlying Reader, buf is a primitive char array,
-         pushCnt tracks how many chars have been pushed back into the
-         stream, bufSize is the size of the primitive array, and pos
-         is the position within buf that should be read."
-    :private true}
-  [^java.io.Reader rdr
-   ^chars buf
-   pushCnt
-   bufSize
-   pos]
+;; How about peek instead of unread
+(deftype StringReader
+  [^String s
+   pos
+   length]
   Stream
   (read [_]
-        (cond
-          (> @pushCnt 0)
-          ;; pos can be greater than bufSize, so mod it.
-          (let [ch (aget buf (mod (- @pos @pushCnt) bufSize))]
-            (swap! pushCnt dec)
-            ch)
-          (= @pushCnt 0)
-          (let [int-ch (.read rdr)]
-            (if (= int-ch -1)
-              nil
-              (do
-                (let [ch (char int-ch)]
-                  (aset buf (mod @pos bufSize) ch)
-                  (swap! pos inc)
-                  ch))))
-          :else
-          (throw (Exception. "Too much unreading!"))))
+    (if (< @pos length)
+      (let [ch (.charAt s @pos)]
+        (swap! pos inc)
+        ch)))
   Hold
   (unread [_]
-         (if (and (< @pushCnt bufSize)
-                  (< @pushCnt @pos)) ; we're not at the beginning
-           (swap! pushCnt inc)
-           (throw (Exception. "Too much unreading!")))
-         nil))
+    (if (> @pos 0)
+      (swap! pos dec))))
 
-(defn pushback-reader
-  "Constructs a pushbackreader from a java.io.Reader"
-  [rd]
-  (PushbackReader. rd
-           (char-array defaultBufSize)
-           (atom 0)
-           defaultBufSize
-           (atom 0)))
+(defn string-reader [s]
+  (StringReader. s (atom 0) (count s)))
 
 (defrecord Delimiters [field
                        component
@@ -179,13 +140,6 @@
       :else
       (recur (conj acc ch) (read r)))))
 
-(defn simplify-field
-  [comps]
-  (case (count comps)
-    1 (first comps)
-    0 nil 
-    comps))
-
 (defn read-component [r
                       {:keys [escape
                               field
@@ -196,7 +150,9 @@
          ch (read r)]
     (cond
       (nil? ch)
-      (simplify-field acc)
+      (if (= 1 (count acc))
+        (first acc)
+        acc)
 
       (= ch subcomponent)
       (recur (conj acc (read-text r delim)) ;; just add the subcomponent
@@ -205,12 +161,17 @@
              (read r))
 
       (= ch component)
-      (simplify-field acc)
+      (if (= 1 (count acc))
+        (first acc)
+        acc)
 
       (or (= ch field)
           (= ch repeating)
           (= ch SEGMENT-DELIMITER))
-      (do (unread r) (simplify-field acc))
+      (do (unread r)
+          (if (= 1 (count acc))
+             (first acc)
+             acc))
 
       :else
       (do (unread r)
@@ -230,21 +191,21 @@
       ;; if the field-acc isn't empty, make a repeating field
       (nil? ch)
       (if (seq field-acc)
-        (RepeatingField. (conj field-acc (simplify-field acc)))
-        (simplify-field acc))
+        (RepeatingField. (conj field-acc acc))
+        acc)
 
       (or (= ch field) (= ch SEGMENT-DELIMITER))
       (do (unread r)
         (if (seq field-acc)
-          (RepeatingField. (conj field-acc (simplify-field acc)))
-          (simplify-field acc)))
+          (RepeatingField. (conj field-acc acc))
+          acc))
 
       ;; When the field repeats, Empty out acc into a new field,
       ;; and place it in field-acc.
       (= ch repeating)
       (recur []
              (read r)
-             (conj field-acc (simplify-field acc)))
+             (conj field-acc acc))
 
       :else
       (do (unread r)
@@ -307,7 +268,7 @@
           ;; FIXME: Also terminate reading upon encountering End Block character(s)
           (= ch SEGMENT-DELIMITER)
           (let [peek (read r)]  ;; peek to see if end of message
-            (if (or (= peek ASCII_LF)
+            (if (or (= peek LINE-FEED)
                     (= peek SEGMENT-DELIMITER)  ;; is this line necessary?
                     (nil? peek))
               (Message. delim acc)

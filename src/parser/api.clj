@@ -1,14 +1,8 @@
-;; use string? coll? set?
 (ns parser.api)
 
 (defn structure
   [m]
   (map :id (:segments m)))
-
-{:segment 
- :field
- :component
- :subcomponent}
 
 ;;get segment DONE
 ;;get segments DONE
@@ -38,21 +32,24 @@
 ;; (component 2)
 ;; (subcomponent 2)
 (defn field
-  "Note, field id is a one-based index"
-  [segment id]
-  (let [fld (nth (:fields segment) (dec id))]
-    (if (:fields fld)
-      (first (:fields fld))
-      fld)))
+  "Takes a segment and returns a field from it, or nil if it field
+   doesn't exist. N.B. field-num is a one-based index.  If the field
+   is repeating, this returns the first repetition only."
+  [segment field-num]
+  (let [idx (dec field-num)]
+    (if (< idx (count (:fields segment)))
+      (let [fld (nth (:fields segment) idx)]
+        (if (:fields fld)
+          (first (:fields fld))
+          fld)))))
 
 (defn repeating-field
   "Note, id is a one-based field index, whereas repetition is 0-based"
-  ([segment id]
-    (-> (:fields segment)
-        (nth (dec id))
-        :fields))
-  ([segment id repetition]
-    (nth (repeating-field segment id) repetition)))
+  [segment field-num]
+  (let [idx (dec field-num)]
+    (if (< idx (count (:fields segment)))
+      (let [fld (nth (:fields segment) idx)]
+        (or (:fields fld) fld)))))
 
 (defn value
   [field]
@@ -71,13 +68,16 @@
       (throw (Exception. "Unknown field structure")))))
 
 (defn component
-  ([field comp]
-    (cond
-      (vector? field)
-      (nth field comp)
-      (= 0 comp)
-      field)) 
-  ([field comp sub]
-    (component (component field comp) ;; Ugly?
-               sub)))
-  
+  ([field idx]
+    (if (< idx (count field))
+      (nth field idx)))
+  ([field idx sub-idx]
+    (let [subcomps (component field idx)]
+      (cond
+        (vector? subcomps)
+        (if (< sub-idx (count subcomps))
+          (nth subcomps sub-idx))
+        (= 0 sub-idx)
+        subcomps
+        :else
+        (throw (Exception. "Unknown field structure"))))))
