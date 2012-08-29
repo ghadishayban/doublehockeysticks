@@ -180,6 +180,13 @@
       :else
       (recur (conj acc ch) (read r)))))
 
+(defn simplify-field
+  [comps]
+  (case (count comps)
+    1 (first comps)
+    0 nil 
+    comps))
+
 (defn read-component [r
                       {:keys [escape
                               field
@@ -190,7 +197,7 @@
          ch (read r)]
     (cond
       (nil? ch)
-      acc
+      (simplify-field acc)
 
       (= ch subcomponent)
       (recur (conj acc (read-text r delim)) ;; just add the subcomponent
@@ -199,12 +206,12 @@
              (read r))
 
       (= ch component)
-      acc
+      (simplify-field acc)
 
       (or (= ch field)
           (= ch repeating)
           (= ch SEGMENT-DELIMITER))
-      (do (unread r) acc)
+      (do (unread r) (simplify-field acc))
 
       :else
       (do (unread r)
@@ -224,21 +231,21 @@
       ;; if the field-acc isn't empty, make a repeating field
       (nil? ch)
       (if (seq field-acc)
-        (RepeatingField. (conj field-acc acc))
-        acc)
+        (RepeatingField. (conj field-acc (simplify-field acc)))
+        (simplify-field acc))
 
       (or (= ch field) (= ch SEGMENT-DELIMITER))
       (do (unread r)
         (if (seq field-acc)
-          (RepeatingField. (conj field-acc acc))
-          acc))
+          (RepeatingField. (conj field-acc (simplify-field acc)))
+          (simplify-field acc)))
 
       ;; When the field repeats, Empty out acc into a new field,
       ;; and place it in field-acc.
       (= ch repeating)
       (recur []
              (read r)
-             (conj field-acc acc))
+             (conj field-acc (simplify-field acc)))
 
       :else
       (do (unread r)
