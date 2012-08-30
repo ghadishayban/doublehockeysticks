@@ -124,7 +124,7 @@
   (loop [acc [] ch (read r)]
     (cond
       (nil? ch)
-      (do (apply str acc))
+      (apply str acc)
 
       (= ch escape)
       (recur (conj acc (read-escaped r delim))
