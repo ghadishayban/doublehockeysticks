@@ -1,7 +1,6 @@
 (ns ^{:doc "Helpers for extracting values from messages"}
-  parser.api)
-
-;; TODO Use cgrand/regex to extract segments
+  parser.api
+  (:import parser.parse.RepeatingField))
 
 (defn structure
   "Returns a seq of the segment headers."
@@ -66,3 +65,23 @@
         subcomps
         :else
         (throw (Exception. "Unknown field structure"))))))
+
+(defn field-seq
+  "This takes a segment and unrolls into list of maps of the form
+   {:segment \"PID\" :field 3 :value \"123\"}, handling repeating fields properly.
+   You probably don't want to call this directly except for source feed
+   analysis, as it is space inefficient."
+   [seg]
+   (let [seg-id (:id seg)
+         expand-repeating-field (fn [[num raw-field]]
+                                  (if (instance? RepeatingField field)
+                                    (for [simple-field (:fields raw-field)]
+                                      [num simple-field])
+                                    (list [num raw-field])))
+         all-fields (mapcat expand-repeating-field
+                      (map list (iterate inc 1) (:fields seg)))]
+       (for [[field-num field-value] all-fields]
+         {:segment seg-id
+          :field field-num
+          :value field-value})))
+
