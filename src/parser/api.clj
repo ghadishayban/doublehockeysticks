@@ -73,13 +73,10 @@
    analysis, as it is space inefficient."
    [seg]
    (let [seg-id (:id seg)
-         expand-repeating-field (fn [[num raw-field]]
-                                  (if (instance? RepeatingField field)
-                                    (for [simple-field (:fields raw-field)]
-                                      [num simple-field])
-                                    (list [num raw-field])))
-         all-fields (mapcat expand-repeating-field
-                      (map list (iterate inc 1) (:fields seg)))]
+         {compound true simple false} (group-by #(instance? RepeatingField (second %))
+                                                (map list (iterate inc 1) (:fields seg)))
+         all-fields (concat simple
+                      (for [[n {fld :fields}] compound] [n fld]))]
        (for [[field-num field-value] all-fields]
          {:segment seg-id
           :field field-num
