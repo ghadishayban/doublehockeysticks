@@ -32,21 +32,20 @@
                             string-reader)
                       (hl7-messages stream)))))
 
-(defn accumulate-cache [cache f coll]
-  (reduce
-    (fn [cache msg]
-      (let [val (f msg)]
-        (if (c/has? cache val)
-          (c/hit cache val)
-          (c/miss cache val nil))))
-    cache
-    coll))
+(def ^:const NUM-ENTRIES 250)
 
-;; RXE 2.1
-(defn drugname [m]
-   (-> m (api/segment "RXE")
-         (api/field 2)
-         (api/component 1)))
+(defn remember
+  [cache val]
+  (if (c/has? cache val)
+    (c/hit cache val)
+    (c/miss cache val nil)))
+
+(defn warm-nested-cache
+  [cache-map k val]
+  (if-let [cache (get cache-map k)]
+    (assoc cache-map k (remember cache val))
+    (assoc cache-map k (remember (c/lu-cache-factory {} :threshold NUM-ENTRIES) 
+                                 val))))
 
 (defn lu-cache-frequency
   [cache]
@@ -54,16 +53,15 @@
     (into {} (for [k (keys cache)]
                [k (get freqs k)]))))
 
-(defn rough-val-frequency [f n coll]
-  (let [cache (c/lu-cache-factory {} :threshold n)]
-    (-> cache
-        (accumulate-cache f coll)
-        lu-cache-frequency)))
-
-(defn drug-frequency [file n]
-  (with-open [b (native-xz-input-stream file)]
-    (->> (hl7-messages b)
-         (rough-val-frequency drugname n))))
+(defn stats-all-fields [msgs]
+  (let [caches (reduce #(warm-nested-cache %1 (dissoc %2 :value)
+                                              (get %2 :value))
+                       {}
+                       (->> msgs (mapcat :segments)
+                                (mapcat api/field-seq)))]
+    (into {}
+      (for [[field cache] caches]
+        [field (lu-cache-frequency cache)]))))
 
 (defn -main [opt]
   (cond
