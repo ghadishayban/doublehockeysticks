@@ -4,6 +4,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :description "FIXME: write description"
   :main parser.structure-analysis
+  :jvm-opts ["-Xmx4096m"]
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/core.cache "0.6.2"]]
   :profiles {:dev {:dependencies [[criterium "0.3.0-SNAPSHOT"]]}})
