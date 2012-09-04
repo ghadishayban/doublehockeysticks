@@ -123,22 +123,30 @@
                            subcomponent] :as delim}]
   (loop [acc [] ch (read r)]
     (cond
-      (nil? ch)
-      (apply str acc)
+      (or (= ch field)
+          (= ch component)
+          (= ch SEGMENT-DELIMITER))
+      (do (unread r) (apply str acc))
 
       (= ch escape)
       (recur (conj acc (read-escaped r delim))
              (read r))
 
-      (or (= ch field)
-          (= ch component)
-          (= ch repeating)
-          (= ch subcomponent)
-          (= ch SEGMENT-DELIMITER))
+      (or (= ch repeating)
+          (= ch subcomponent))
       (do (unread r) (apply str acc))
+
+      (nil? ch)
+      (apply str acc)
 
       :else
       (recur (conj acc ch) (read r)))))
+
+(defn simplify-nesting [coll]
+  (case (count coll)
+    0 nil
+    1 (first coll)
+    coll))
 
 (defn read-component [r
                       {:keys [escape
@@ -149,10 +157,14 @@
   (loop [acc []
          ch (read r)]
     (cond
-      (nil? ch)
-      (if (= 1 (count acc))
-        (first acc)
-        acc)
+      (= ch component)
+      (simplify-nesting acc)
+
+      (or (= ch field)
+          (= ch repeating)
+          (= ch SEGMENT-DELIMITER))
+      (do (unread r)
+          (simplify-nesting acc))
 
       (= ch subcomponent)
       (recur (conj acc (read-text r delim)) ;; just add the subcomponent
@@ -160,18 +172,8 @@
                                             ;; any additional structure
              (read r))
 
-      (= ch component)
-      (if (= 1 (count acc))
-        (first acc)
-        acc)
-
-      (or (= ch field)
-          (= ch repeating)
-          (= ch SEGMENT-DELIMITER))
-      (do (unread r)
-          (if (= 1 (count acc))
-             (first acc)
-             acc))
+      (nil? ch)
+      (simplify-nesting acc)
 
       :else
       (do (unread r)
@@ -185,27 +187,26 @@
                             subcomponent] :as delim}]
   ;; field-acc helps to handle repeating fields.
   ;; acc is for the components within a single field.
+  ;; if the field-acc isn't empty, make a repeating field
   (loop [acc [] ch (read r) field-acc []]
     (cond
-
-      ;; if the field-acc isn't empty, make a repeating field
-      (nil? ch)
-      (if (seq field-acc)
-        (RepeatingField. (conj field-acc acc))
-        acc)
-
       (or (= ch field) (= ch SEGMENT-DELIMITER))
       (do (unread r)
         (if (seq field-acc)
-          (RepeatingField. (conj field-acc acc))
-          acc))
+          (RepeatingField. (conj field-acc (simplify-nesting acc)))
+          (simplify-nesting acc)))
 
       ;; When the field repeats, Empty out acc into a new field,
       ;; and place it in field-acc.
       (= ch repeating)
       (recur []
              (read r)
-             (conj field-acc acc))
+             (conj field-acc (simplify-nesting acc)))
+
+      (nil? ch)
+      (if (seq field-acc)
+        (RepeatingField. (conj field-acc (simplify-nesting acc)))
+        (simplify-nesting acc))
 
       :else
       (do (unread r)

@@ -13,6 +13,14 @@
   (is (thrown? Exception (api/value ["123" []])) "This has a second component, though it's empty."))
 
 (deftest components
+  (is (nil? (api/component nil 0)))
+  (is (= "asdf" (api/component "asdf" 0)))
+  (is (= "bar" (api/component ["asdf" "bar"] 1 0)))
+  (is (= "bar" (api/component ["asdf" ["bar"]] 1 0)))
+  (is (nil? (api/component ["asdf" nil] 1 0)))
+  (is (nil? (api/component [nil nil] 1 0)))
+  (is (= "123" (api/component ["123"] 0)))
+  (is (= "123" (api/component ["123"] 0)))
   (is (= "123" (api/component ["123"] 0)))
   (is (= "123" (api/component ["1" "123"] 1)))
   (is (nil? (api/component ["1" "123"] 3)))

@@ -69,8 +69,11 @@
 
 (defn component
   ([field idx]
-    (if (< idx (count field))
-      (nth field idx)))
+    (cond
+      (and (vector? field) (< idx (count field)))
+      (nth field idx)
+      (= idx 0)
+      field))
   ([field idx sub-idx]
     (let [subcomps (component field idx)]
       (cond
