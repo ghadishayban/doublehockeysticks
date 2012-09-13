@@ -2,6 +2,7 @@
   (:gen-class)
   (:require [parser.api :as api]
            [clojure.core.cache :as c]
+           [clojure.java.io :as io]
            [parser.bench :refer (native-xz-input-stream)]
            [parser.codec :refer (hl7-messages)]
            [parser.parse :refer (read-message string-reader)]))
@@ -15,6 +16,8 @@
    (api/structure m)])
 
 (def medfile "/tmp/ch/home/cloverleaf/output/HMMInbound.1229.xz")
+
+(defmacro field [seg num] {:segment (name seg) :field num})
 
 (defn ->stream
   [option]
@@ -62,6 +65,28 @@
     (into {}
       (for [[field cache] caches]
         [field (lu-cache-frequency cache)]))))
+
+(defn run-stats [file]
+  (with-open [f (native-xz-input-stream file)]
+    (stats-all-fields (hl7-messages f))))
+
+(defn probable-field-type
+  [stat]
+  (let [cnt (count stat)]
+    (cond
+      (< cnt 2)
+      {:field-type :nil-or-constant
+       :values stat}
+      (>= cnt NUM-ENTRIES)
+      {:field-type :unique}
+      :else
+      {:field-type :dictionary
+       :values stat})))
+
+(defn analyze [field-stats]
+  (into []
+    (for [[fld statistics] field-stats]
+      (merge fld (probable-field-type statistics)))))
 
 (defn -main [opt]
   (cond
