@@ -96,3 +96,17 @@
     (with-open [output (clojure.java.io/writer "/tmp/freq")]
       (binding [*out* output]
 ))))
+
+
+(defmacro super-analyze [f]
+  `(with-open [~'f ~f]
+     (-> ~'f
+         hl7-messages
+         stats-all-fields
+         analyze)))
+
+(defmacro structure-freq [f]
+  `(with-open [~'f ~f]
+     (frequencies 
+       (map api/structure
+         (hl7-messages ~'f)))))
