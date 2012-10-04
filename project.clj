@@ -6,5 +6,6 @@
   :main parser.structure-analysis
   :jvm-opts ["-Xmx4096m"]
   :dependencies [[org.clojure/clojure "1.4.0"]
+                 [clojure-csv "2.0.0-alpha2"]
                  [org.clojure/core.cache "0.6.3-GHADI"]]
   :profiles {:dev {:dependencies [[criterium "0.3.0-SNAPSHOT"]]}})
