@@ -4,15 +4,13 @@
   (:refer-clojure :exclude [read])
   (:require [parser.escape :refer (translate)]))
 
-;;(set! *warn-on-reflection* true)
-
-;; TODO: Test ClojureScript version.
-;; Does that need a special exception handler?
-;; Need to write a StringReader for that.
+(set! *warn-on-reflection* true)
 
 ;; ASCII codes of delimiters
 (def ^:const SEGMENT-DELIMITER \return)
 (def ^:const LINE-FEED (char 10))
+
+(def ^:dynamic *unescape* true)
 
 (defprotocol Stream
   "A simple abstraction for reading chars"
@@ -136,8 +134,11 @@
       (do (unread r) (apply str acc))
 
       (= ch escape)
-      (recur (conj acc (read-escaped r delim))
-             (read r))
+      (if *unescape* 
+        (recur (conj acc (read-escaped r delim))
+               (read r))
+        (recur (conj acc ch)
+               (read r)))
 
       (or (= ch repeating)
           (= ch subcomponent))
