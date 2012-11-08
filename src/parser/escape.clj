@@ -28,7 +28,8 @@
       \F (str (:field delim))
       nil)
     
-    (= [\. \b \r] chars)
+    (or (= [\. \b \r] chars)
+        (= [\. \B \R] chars))
     "\n"
     
     (= \X (first chars))
