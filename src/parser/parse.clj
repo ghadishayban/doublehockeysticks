@@ -108,16 +108,20 @@
 (defrecord RepeatingField [fields])
 
 (defn read-escaped [r {:keys [escape] :as delim}]
-  (loop [acc [] ch (read r)]
-    (cond
-      (nil? ch)
-      (throw (Exception. "EOF during escape sequence."))
+  (let [delims (conj (set (vals delim)) SEGMENT-DELIMITER)] 
+    (loop [acc [] ch (read r)]
+      (cond
+        (nil? ch)
+        (throw (Exception. "EOF during escape sequence."))
 
-      (= escape ch)
-      (translate acc delim)
+        (= escape ch)
+        (translate acc delim)
 
-      :else
-      (recur (conj acc ch) (read r)))))
+        (contains? delims ch)
+        (throw (Exception. "Unexpected delimiter inside escape sequence"))
+
+        :else
+        (recur (conj acc ch) (read r))))))
 
 (defn read-text [r {:keys [escape
                            field
