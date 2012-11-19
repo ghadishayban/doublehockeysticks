@@ -1,7 +1,7 @@
 (ns com.shayban.hl7v2.bench
   (:gen-class)
   (:require [parser.parse :as p]
-            [parser.codec :refer (hl7-msg-seq)]
+            [parser.codec :refer (hl7-messages)]
             [clojure.java.io :as io]))
 
 (defn native-xz-input-stream [fname & args]
@@ -12,11 +12,11 @@
                   ^"[Ljava.lang.String;" (into-array command-args))]
     (apply io/reader (.getInputStream process) args)))
 
-(defn parse-all-in-file [path]
+#_(defn parse-all-in-file [path]
   (map (comp p/read-message p/string-reader)
        (-> System/in
          (io/reader :buffer-size (bit-shift-left 1 21))
          hl7-msg-seq)))
 
-(defn -main [path]
+#_(defn -main [path]
   (parse-all-in-file path))

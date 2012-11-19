@@ -1,6 +1,8 @@
 (ns ^{:doc "Helpers for extracting values from messages"}
-  com.shayban.hl7v2.api)
-
+  com.shayban.hl7v2.api
+  (:require parser.parse)
+  (:import parser.parse.RepeatingField))
+ 
 ;; TODO Use cgrand/regex to extract segments
 
 (defn structure
@@ -66,3 +68,21 @@
         subcomps
         :else
         (throw (Exception. "Unknown field structure"))))))
+
+(defn field-seq
+  "This takes a segment and unrolls into list of maps of the form
+   {:segment \"PID\" :field 3 :value \"123\"}, handling repeating fields properly.
+   You probably don't want to call this directly except for source feed
+   analysis, as it is space inefficient."
+   [seg]
+   (let [seg-id (:id seg)
+         {compound true simple false} (group-by #(instance? RepeatingField (second %))
+                                                (map list (iterate inc 1) (:fields seg)))
+         all-fields (concat simple
+                      (for [[n {fld :fields}] compound] [n fld]))]
+       (for [[field-num field-value] all-fields :when field-value]
+         {:segment seg-id
+          :field field-num
+          :value field-value})))
+
+
