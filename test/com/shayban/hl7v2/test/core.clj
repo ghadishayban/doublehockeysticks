@@ -1,6 +1,6 @@
-(ns parser.test.core
-  (:require [parser.api :as api]
-            [parser.escape :as esc])
+(ns com.shayban.hl7v2.test.core
+  (:require [com.shayban.hl7v2.api :as api]
+            [com.shayban.hl7v2.escape :as esc])
   (:use [clojure.test]))
 
 (deftest components

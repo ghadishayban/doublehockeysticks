@@ -1,10 +1,10 @@
-(ns parser.test.luhn
-  (:require [parser.luhn :refer (luhn)]
+(ns com.shayban.hl7v2.test.luhn
+  (:require [com.shayban.hl7v2.luhn :refer (luhn)]
             [clojure.java.io :as io])
   (:use clojure.test)
   (:import java.io.PushbackReader))
 
-(def url "parser/test/luhn_data.clj")
+(def url "com/shayban/hl7v2/test/luhn_data.clj")
 
 (deftest loonie
   (testing "strings are equiv"
