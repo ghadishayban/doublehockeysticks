@@ -1,11 +1,11 @@
-(ns parser.structure-analysis
-  (:require [parser.api :as api]
+(ns com.shayban.hl7v2.structure-analysis
+  (:require [com.shayban.hl7v2.api :as api]
            [clojure.core.cache :as c]
            [clojure.core.reducers :as r]
            [clojure.java.io :as io]
-           [parser.bench :refer (native-xz-input-stream)]
-           [parser.codec :refer (hl7-messages)]
-           [parser.parse :refer (read-message string-reader)]))
+           [com.shayban.hl7v2.bench :refer (native-xz-input-stream)]
+           [com.shayban.hl7v2.codec :refer (hl7-messages)]
+           [com.shayban.hl7v2.parse :refer (read-message string-reader)]))
 
 (defn fingerprint
   [m]

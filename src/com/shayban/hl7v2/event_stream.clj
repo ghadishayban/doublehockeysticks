@@ -1,4 +1,4 @@
-(ns parser.event-stream
+(ns com.shayban.hl7v2.event-stream
   (:require [clojure.java.io :as io]
             [clojure.pprint :refer (pprint)]
             [clojure.string :as str]))

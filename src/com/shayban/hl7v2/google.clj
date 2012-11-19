@@ -1,4 +1,4 @@
-(ns parser.google
+(ns com.shayban.hl7v2.google
   (:require [clojure-csv.core :as csv]))
 
 (defn stat-to-string
