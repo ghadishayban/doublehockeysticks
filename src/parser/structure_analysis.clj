@@ -1,5 +1,4 @@
 (ns parser.structure-analysis
-  (:gen-class)
   (:require [parser.api :as api]
            [clojure.core.cache :as c]
            [clojure.java.io :as io]

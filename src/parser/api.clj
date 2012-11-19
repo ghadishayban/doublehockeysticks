@@ -1,5 +1,6 @@
 (ns ^{:doc "Helpers for extracting values from messages"}
   parser.api
+  (:require parser.parse)
   (:import parser.parse.RepeatingField))
 
 (defn structure
