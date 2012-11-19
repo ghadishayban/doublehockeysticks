@@ -1,5 +1,5 @@
 (ns ^{:doc "Helpers for getting translating HL7 escape sequences"}
-  parser.escape)
+  com.shayban.hl7v2.escape)
 
 ;; TODO translate-hex for clojurescript
 

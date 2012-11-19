@@ -1,4 +1,4 @@
-(ns parser.bench
+(ns com.shayban.hl7v2.bench
   (:gen-class)
   (:require [parser.parse :as p]
             [parser.codec :refer (hl7-msg-seq)]

@@ -1,5 +1,5 @@
 (ns ^{:doc "Helpers for extracting values from messages"}
-  parser.api)
+  com.shayban.hl7v2.api)
 
 ;; TODO Use cgrand/regex to extract segments
 

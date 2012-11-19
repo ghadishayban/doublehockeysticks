@@ -1,6 +1,6 @@
 (ns 
   ^{:doc "An HL7 v2 parser.  read-message and string-reader are externally useful fns"}
-  parser.parse
+  com.shayban.hl7v2.parse
   (:refer-clojure :exclude [read])
   (:require [parser.escape :refer (translate)]))
 
