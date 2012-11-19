@@ -1,7 +1,8 @@
 (ns ^{:doc "Helpers for pulling out raw messages as strings from piles or streams"}
   parser.codec
   (:refer-clojure :exclude [line-seq read-line])
-  (:require [parser.parse :as p])
+  (:require [parser.parse :as p]
+            [clojure.core.reducers :as r])
   (:import [java.io BufferedReader]))
 
 (defn read-line
@@ -22,5 +23,10 @@
     (cons line (lazy-seq (line-seq rdr)))))
 
 (defn hl7-messages [rdr]
-  (map (comp p/read-message p/string-reader)
-       (line-seq rdr))) 
+  (->> (line-seq rdr)
+    (r/map (fn [s]
+             (try (p/read-message (p/string-reader s))
+               (catch Exception e (spit (format "/tmp/invalid-%s.hl7"
+                                                (java.util.UUID/randomUUID))
+                                        s)))))
+    (r/filter identity)))
