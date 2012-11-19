@@ -1,4 +1,4 @@
-(ns com.shayban.hl7v2.google
+(ns com.shayban.hl7v2.output-stats
   (:require [clojure-csv.core :as csv]))
 
 (defn stat-to-string

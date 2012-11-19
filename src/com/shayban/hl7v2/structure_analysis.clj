@@ -4,8 +4,9 @@
            [clojure.core.reducers :as r]
            [clojure.java.io :as io]
            [com.shayban.hl7v2.bench :refer (native-xz-input-stream)]
+           [com.shayban.hl7v2.output-stats :refer (spit-stats)]
            [com.shayban.hl7v2.codec :refer (hl7-messages)]
-           [com.shayban.hl7v2.parse :refer (read-message string-reader)]))
+           [com.shayban.hl7v2.parse :refer (*unescape* read-message string-reader)]))
 
 (defn fingerprint
   [m]
@@ -15,25 +16,15 @@
       (api/field 9))
    (api/structure m)])
 
-(def medfile "/tmp/ch/home/cloverleaf/output/HMMInbound.1229.xz")
-
-(defmacro field [seg num] {:segment (name seg) :field num})
-
 (defn ->stream
   [option]
   (cond
     (= option "-")
     (clojure.java.io/reader System/in :buffer-size 1024000)
+    (.endsWith option ".xz")
+    (native-xz-input-stream option)
     :else
     (clojure.java.io/reader option)))
-
-(defn in-hl7-stream
-  [reader]
-  (with-open [stream reader]
-    (frequencies (map (comp fingerprint
-                            read-message
-                            string-reader)
-                      (hl7-messages stream)))))
 
 (def ^:const NUM-ENTRIES 250)
 
@@ -52,11 +43,11 @@
 
 (defn lu-cache-frequency
   [cache]
-  (let [freqs (.-lu cache)] ;; fuck you Java, fields are values
+  (let [freqs (.-lu cache)] ;; pull out internal cache hit stats
     (into {} (for [k (keys cache)]
                [k (get freqs k)]))))
 
-(defn stats-all-fields [msgs]
+(defn collect-field-stats [msgs]
   (let [caches (r/reduce #(warm-nested-cache %1 (dissoc %2 :value)
                                               (get %2 :value))
                        {}
@@ -65,10 +56,6 @@
     (into {}
       (for [[field cache] caches]
         [field (lu-cache-frequency cache)]))))
-
-(defn run-stats [file]
-  (with-open [f (native-xz-input-stream file)]
-    (stats-all-fields (hl7-messages f))))
 
 (defn probable-field-type
   [stat]
@@ -83,30 +70,27 @@
       {:field-type :dictionary
        :values stat})))
 
-(defn analyze [field-stats]
+(defn interpret-stats [field-stats]
   (into []
     (for [[fld statistics] field-stats]
       (merge fld (probable-field-type statistics)))))
 
-(defn -main [opt]
+(defmacro analyze-stream [f]
+  `(with-open [f# ~f]
+     (binding [*unescape* false]
+       (-> f#
+           hl7-messages
+           collect-field-stats
+           interpret-stats))))
+
+(defn -main
+  [filespec diroutput]
   (cond
-    (= opt "--help")
-    (println "Please specify a filename or - for stdin.  This will write to /tmp/freq")
+    (= filespec "--help")
+    (println "Please specify a filename or - for stdin, followed by a directory for analysis output.")
     :else
-    (with-open [output (clojure.java.io/writer "/tmp/freq")]
-      (binding [*out* output]
-))))
-
-
-(defmacro super-analyze [f]
-  `(with-open [~'f ~f]
-     (-> ~'f
-         hl7-messages
-         stats-all-fields
-         analyze)))
-
-(defmacro structure-freq [f]
-  `(with-open [~'f ~f]
-     (frequencies 
-       (map api/structure
-         (hl7-messages ~'f)))))
+    (do 
+      (println "Working...")
+      (spit-stats (analyze-stream (->stream filespec))
+                diroutput)
+      (println "Done!"))))
