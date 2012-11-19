@@ -78,7 +78,7 @@
                                                 (map list (iterate inc 1) (:fields seg)))
          all-fields (concat simple
                       (for [[n {fld :fields}] compound] [n fld]))]
-       (for [[field-num field-value] all-fields]
+       (for [[field-num field-value] all-fields :when field-value]
          {:segment seg-id
           :field field-num
           :value field-value})))

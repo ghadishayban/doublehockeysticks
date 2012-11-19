@@ -1,6 +1,7 @@
 (ns parser.structure-analysis
   (:require [parser.api :as api]
            [clojure.core.cache :as c]
+           [clojure.core.reducers :as r]
            [clojure.java.io :as io]
            [parser.bench :refer (native-xz-input-stream)]
            [parser.codec :refer (hl7-messages)]
@@ -56,11 +57,11 @@
                [k (get freqs k)]))))
 
 (defn stats-all-fields [msgs]
-  (let [caches (reduce #(warm-nested-cache %1 (dissoc %2 :value)
+  (let [caches (r/reduce #(warm-nested-cache %1 (dissoc %2 :value)
                                               (get %2 :value))
                        {}
-                       (->> msgs (mapcat :segments)
-                                (mapcat api/field-seq)))]
+                       (->> msgs (r/mapcat :segments)
+                                (r/mapcat api/field-seq)))]
     (into {}
       (for [[field cache] caches]
         [field (lu-cache-frequency cache)]))))
