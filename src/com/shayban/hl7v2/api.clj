@@ -1,7 +1,7 @@
 (ns ^{:doc "Helpers for extracting values from messages"}
   com.shayban.hl7v2.api
-  (:require parser.parse)
-  (:import parser.parse.RepeatingField))
+  (:require com.shayban.hl7v2.parse)
+  (:import com.shayban.hl7v2.parse.RepeatingField))
  
 ;; TODO Use cgrand/regex to extract segments
 

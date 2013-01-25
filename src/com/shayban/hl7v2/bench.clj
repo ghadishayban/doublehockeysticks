@@ -1,7 +1,7 @@
 (ns com.shayban.hl7v2.bench
   (:gen-class)
-  (:require [parser.parse :as p]
-            [parser.codec :refer (hl7-messages)]
+  (:require [com.shayban.hl7v2.parse :as p]
+            [com.shayban.hl7v2.codec :refer (hl7-messages)]
             [clojure.java.io :as io]))
 
 (defn native-xz-input-stream [fname & args]

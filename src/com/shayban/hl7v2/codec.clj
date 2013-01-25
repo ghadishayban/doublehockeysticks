@@ -1,7 +1,7 @@
 (ns ^{:doc "Helpers for pulling out raw messages as strings from piles or streams"}
   com.shayban.hl7v2.codec
   (:refer-clojure :exclude [line-seq read-line])
-  (:require [parser.parse :as p]
+  (:require [com.shayban.hl7v2.parse :as p]
             [clojure.core.reducers :as r])
   (:import [java.io BufferedReader]))
 
